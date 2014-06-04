@@ -1,0 +1,128 @@
+import sys, doctest
+import math
+import dateutil.parser
+import datetime
+from xml.etree import cElementTree as ET
+
+
+def get_euclidian_distance(point1, point2):
+    """
+    Points are lists or tuples of longitude, latitude
+    Formula from http://math.stackexchange.com/questions/29157/how-do-i-convert-the-distance-between-two-lat-long-points-into-feet-meters
+
+    >>> p1 = (32.773178, -79.920094)
+    >>> p2 = (32.781666666666666,-79.916666666666671)
+
+    Uhmmm these are inverted in the example
+    >>> p1 = (p1[1], p1[0])
+    >>> p2 = (p2[1], p2[0])
+    >>> get_euclidian_distance(p1, p2)
+    996.8007931909733
+    """
+   
+    # Radius of the Earth in meters
+    R = 6371000
+    
+    midpoint_lat = (point1[1] + point2[1]) / 2
+    p1_long = math.radians(point1[0])
+    p1_lat = math.radians(point1[1])
+    p2_long = math.radians(point2[0])
+    p2_lat = math.radians(point2[1])
+    dist = R * math.sqrt(
+                (p2_lat - p1_lat) ** 2 + 
+                math.cos(math.radians(midpoint_lat)) ** 2 * (p2_long - p1_long) ** 2
+                )
+    return dist
+
+def extract_test_coords(coords_string):
+    """
+    >>> extract_test_coords(" (96.2, 4.0)")
+    (96.2, 4.0)
+    """
+    coords = coords_string.split("(")[1]
+    coords = coords.split(",")
+    long_ = float(coords[0])
+    lat = float(coords[1].strip()[:-1])
+    return long_, lat
+
+def compare_placemarks(a, b):
+    """
+    Used to sort placemarks by timestamp then ID
+    Placemarks are the tuples appended to results_by_test[ix]
+    """
+    if a[3] > b[3]:
+        return 1
+    elif a[3] == b[3]: # Same timestamp ?
+        if int(a[0]) > int(b[0]): # Sort by ID
+            return 1
+        else:
+            return -1
+    else:
+        return -1
+
+def main():
+    input_file = open(sys.argv[1], 'r')
+
+    test_cases = []
+    for test in input_file: 
+        if test.startswith("<?xml"):
+            break
+        test = test.split(";")
+        radius = int(test[0])
+        coords = extract_test_coords(test[1].strip()) 
+        test_cases.append((radius, coords[0], coords[1]))
+    input_file.close()
+    input_file = open(sys.argv[1], 'r')
+    # Move file pos to beginning of XML
+    for i in range(len(test_cases)):
+        input_file.readline()
+    ns = "http://www.opengis.net/kml/2.2"
+    results_by_test = [[] for i in range(len(test_cases))]
+    for event, elem in ET.iterparse(input_file):
+        #if elem.tag.endswith('kml'):
+        #    print elem.get('id')
+        if elem.tag.endswith("Placemark") and elem.get('id'):
+            coords = elem.find('{%s}Point/{%s}coordinates' % (ns, ns)).text
+            coords = coords.split(",")
+            coords = map(float, coords)
+            for ix, test in enumerate(test_cases):
+                # For each test, let's check the distance to this placemark
+                if get_euclidian_distance(test[1:], coords) < test[0] * 1000:
+                    # Now that we know this placemark is inside the radius, let's get all the needed data
+                    type_ = elem.findtext('{%s}type' % ns)
+                    confs = elem.find('{%s}description' % (ns)).text
+                    # Now we have the text inside description as a string. For speed, let's parse it quick and dirty.
+                    confs = confs.split("Confirmation: <b>",1)[1]
+                    confs = int(confs.split("</b>",1)[0])
+                    timestamp = elem.find('{%s}TimeStamp/{%s}when' % (ns, ns)).text
+                    timestamp = dateutil.parser.parse(timestamp)
+                    timestamp = (timestamp - datetime.datetime(1970,1,1)).total_seconds()
+                    results_by_test[ix].append((elem.get('id'), type_, confs, timestamp))
+                
+            elem.clear()
+    # We're done with the raw XML, we have all the relevant placemarks in results_by_test
+    for ix, result in enumerate(results_by_test):
+        # Sort by number of confirmations
+        result.sort(key=lambda p: p[2], reverse=True)
+    for ix, _ in enumerate(test_cases):
+        if len(results_by_test[ix]) > 0:
+            # Let's keep just the placemarks with the maximum number of confirmations
+            max_confs = results_by_test[ix][0][2]
+            placemarks = filter(lambda p: p[2] == max_confs, results_by_test[ix])
+            # Let's sort them by timestamp and ID
+            placemarks.sort(cmp=compare_placemarks)
+            test_result = []
+            for pm in placemarks:
+                 test_result.append("%s ID %s" % (pm[1], pm[0]))
+            print ", ".join(test_result)
+        else:
+            print "None"
+
+            
+    input_file.close()
+    
+
+if len(sys.argv) == 3 and sys.argv[2] == '--test':
+    doctest.testmod()
+else:
+    main()

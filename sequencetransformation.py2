@@ -1,0 +1,174 @@
+"""
+"""
+
+import sys
+import re
+import doctest
+
+
+DEBUG = False
+
+
+def count_letter_groups(letters):
+    """
+    >>> count_letter_groups("AAAAAAAAAAAAA")
+    1
+    >>> count_letter_groups("A")
+    1
+    >>> count_letter_groups("B")
+    1
+    >>> count_letter_groups("AB")
+    2
+    >>> count_letter_groups("AAAAB")
+    2
+    >>> count_letter_groups("ABAB")
+    4
+    >>> count_letter_groups("AB"*500)
+    1000
+    """
+   
+    if len(letters) == 0:
+        return 0 
+    letter_groups = 1
+    current_letter = letters[0]
+    for x in letters[1:]:
+        if x != current_letter:
+            letter_groups += 1
+            current_letter = x
+    return letter_groups
+
+def test_groups(binary, letters):
+    lg = count_letter_groups(letters)
+    return len(binary) >= lg
+
+def can_transform(test):
+    """
+    >>> can_transform("1010 AAAAABBBBAAAA")
+    True
+    >>> can_transform("10110 AAAAABBBBAAAA")
+    True
+    >>> can_transform("00 AAAAAA")
+    True
+    >>> can_transform("11 AAAAAA")
+    True
+    >>> can_transform("00 AA")
+    True
+    >>> can_transform("11 AA")
+    True
+    >>> can_transform("00 BB")
+    False
+    >>> can_transform("01001110 AAAABAAABBBBBBAAAAAAA")
+    True
+    >>> can_transform("1100110 BBAABABBA")
+    False
+    >>> can_transform("1 " + "B"*1000)
+    True
+    >>> can_transform("0"*1000 + " " + "A"*1000)
+    True
+    >>> can_transform("1"*99 + " " + "B"*1000)
+    True
+    >>> can_transform("0"*51+"1"*99 + " " + "A"*200+"B"*800)
+    True
+    >>> can_transform("1"*99 + " " + "A"*500 + "B"*500)
+    True
+    >>> can_transform("1"*5 + "0"*5 + " " + "B"*20+"A"*5)
+    True
+    >>> can_transform("1"*5 + "0"*5 + " " + "B"*70)
+    False
+    >>> can_transform("1"*75 + "0"*75 + " " + "B"*500 + "A"*500)
+    True
+    >>> can_transform("1111100000" + " " + "B"*500)
+    False
+    >>> can_transform("01" * 75 + " " + "AB"*75)
+    True
+    >>> can_transform("10" * 75 + " " + "BA"*75)
+    True
+    >>> can_transform("1 BBBBBBAAAAAA")
+    False
+    >>> can_transform("0000 AAA")
+    False
+
+    >>> can_transform("10000100100101111000011101011101010011000110110011010000111000100001010011001111011001011010101111110101101100011011010 AAABBAABBBBBBABBBABAABAAABBBAABABAAABBBABBBBBBBBBBABBABBBBBBABAABBABABBBBABBBABBAAABBBAABBAAABABBBBABBBAAAAAABBBBBAAABBABABABBBBABBAAABBBBBAAAABABAABBBBAABAABBBBBABAABBABBAABABABABAABBABAABABABABBBABABABAABBAABAAAAAABBABB")
+    False
+    
+    """
+    binary, letters = tuple(test.split())
+    #if not test_groups(binary, letters):
+    #    return False
+    #if binary[0] == "0" and letters[0] != "A":
+    #    return False
+    #if binary[-1] == "0" and letters[-1] != "A":
+    #    return False
+    # Let's add some heuristics
+    #if "0" in binary and not "A" in letters:
+    #    return False
+    #if not "1" in binary and "B" in letters:
+    #    return False
+    regex = gen_regex(binary)
+    p = re.compile(regex)
+    return p.match(letters) is not None
+
+def get_binary_groups(binary):
+    """
+    >>> get_binary_groups("111")
+    ['111']
+    >>> get_binary_groups("11100")
+    ['111', '00']
+    >>> get_binary_groups("1010100000")
+    ['1', '0', '1', '0', '1', '00000']
+    
+    """
+    if len(binary) == 0:
+        return []
+    if len(binary) == 1:
+        return[binary]
+    current_char = binary[0]
+    groups = [binary[0]]
+    for ix, char in enumerate(binary[1:]):
+        if char == current_char:
+            groups[-1] += char
+        else:
+            # We're changing groups
+            current_char = char
+            groups.append("")
+            groups[-1] += char
+    return groups
+
+def gen_regex(binary):
+    """
+    >>> gen_regex("000")
+    'A{3,}?$'
+    """
+    groups = get_binary_groups(binary)
+    regex = ["A{%d,1000}?" % len(group) if group[0]=="0" else "(?:A{1,1000}?|B{1,1000}?)?" * len(group) for group in groups]
+    regex = "".join(regex) + "$"
+    if DEBUG:
+        print "regex: %s" % regex
+    return regex
+    
+if sys.argv[1] == "--secrettests":
+    DEBUG = True
+    doctest.testmod()
+    sys.exit()
+elif sys.argv[1] == "--mytest":
+    DEBUG = True
+    print can_transform("1"*99 + " " + "A"*500 + "B"*500)
+    print "Yes" if can_transform("00101100011010000011000010100000110110010000001010111000010001101111011111 AAAAAAAAAABBBBBBAAAAAAAAABBBBBBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBAAAAAABAAABBBBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBAAABBBBBBBBBBBBBBBAAAAA") else "No"
+    sys.exit()
+
+test_cases = open(sys.argv[1], 'r')
+known_tests = ['1 BBBBBBAAAAAA', '1010 AAAAABBBBAAAA', '10000100100101111000011101011101010011000110110011010000111000100001010011001111011001011010101111110101101100011011010 AAABBAABBBBBBABBBABAABAAABBBAABABAAABBBABBBBBBBBBBABBABBBBBBABAABBABABBBBABBBABBAAABBBAABBAAABABBBBABBBAAAAAABBBBBAAABBABABABBBBABBAAABBBBBAAAABABAABBBBAABAABBBBBABAABBABBAABABABABAABBABAABABABABBBABABABAABBAABAAAAAABBABB',
+    "0000 AAA",
+    "0000 AAAA",
+]
+test_count = 0
+tests = []
+for test in test_cases:
+    test = test.strip()
+    #if test not in known_tests:
+    #    raise Exception("%d %s --- \n %s" % (test_count, test, "\n".join(tests)))
+    print "Yes" if can_transform(test) is True else "No"
+    test_count += 1
+    tests.append(test)
+
+test_cases.close()

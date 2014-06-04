@@ -1,0 +1,90 @@
+"""
+"""
+
+import sys
+import doctest
+
+
+DEBUG = False
+
+
+
+def extract_from_test(test_str):
+    """
+    >>> extract_from_test("(0,1,2,4)")
+    [0, 1, 2, 4]
+    """
+    streets = test_str[1: -1].split(",")
+    return map(lambda x: int(x), streets)
+
+def intersect(a, b):
+    """
+    The two parameters are segments on the real numbers axis.
+    Each segment is a tuple or list of two floats.
+    This function calculates if they intersect, or not.
+    Idea adapted from http://stackoverflow.com/questions/22456517/i-scoured-the-web-but-was-unable-to-find-an-algorithm-for-finding-the-segment-ov
+
+    >>> intersect((0, 1), (2, 3))
+    False
+    >>> intersect((0, 1), (1, 3))
+    False
+    >>> intersect((0, 2), (1, 3))
+    True
+    >>> intersect((0, 3), (1, 2))
+    True
+    >>> intersect((1, 3), (2, 0))
+    True
+    """
+    a_min = min(a)
+    b_min = min(b)
+    a_max = max(a)
+    b_max = max(b)
+    max_min = max(a_min, b_min)
+    min_max = min(a_max, b_max)
+    return max_min < min_max
+
+if len(sys.argv) > 2 and sys.argv[2] == "--secrettests":
+    DEBUG = True
+    doctest.testmod()
+    sys.exit()
+
+test_cases = open(sys.argv[1], 'r')
+cleaned = []
+for test in test_cases:
+    streets, avenues = test.strip().split()
+    streets, avenues = extract_from_test(streets), extract_from_test(avenues)
+    cleaned.append([streets, avenues])
+
+for test in cleaned:
+    overflown_blocks = []
+    # Coords of helicopter flight start and end
+    heli_line = [0, 0, test[0][-1], test[1][-1]]
+    # Tangent of heli flight to horizontal
+    heli_tan = float(heli_line[3]) / heli_line[2]
+
+    # Let's enumerate all vertical lines between two streets, starting left
+    left_heli_intersection = 0.0 # y-coord where the heli flight intersected the street on the left side
+    for ix, street in enumerate(test[0][1:]):
+        # y-coord where heli flight intersected the street on the right side of the current vertical line
+        right_heli_intersection = street * heli_tan
+        if DEBUG:
+            print test[0][ix], street, left_heli_intersection, right_heli_intersection
+        # Let's enumerate blocks in this vertical line, starting from the bottom
+        for ix_avenue, avenue in enumerate(test[1][1:]):
+            lower_avenue_limit = test[1][ix_avenue]
+            # Is this block below the left heli intersection ? Skip to next
+            if avenue < left_heli_intersection:
+                continue
+            # Is this block overflown ?
+            if intersect((lower_avenue_limit, avenue), (left_heli_intersection, right_heli_intersection)):
+                if DEBUG:
+                    print "Overflown", lower_avenue_limit, avenue
+                overflown_blocks.append((street, lower_avenue_limit, avenue))
+            elif overflown_blocks[-1][0] == street: # Is this the first block of this vertical line that is not overflown ? Then skip to the next line
+                break
+            
+        left_heli_intersection = right_heli_intersection
+    print len(overflown_blocks)
+
+
+test_cases.close()

@@ -1,0 +1,25 @@
+"""
+"""
+
+import sys
+import doctest
+
+
+DEBUG = False
+
+
+
+if sys.argv[1] == "--secrettests":
+    DEBUG = True
+    doctest.testmod()
+    sys.exit()
+elif sys.argv[1] == "--mytest":
+    DEBUG = True
+    sys.exit()
+
+test_cases = open(sys.argv[1], 'r')
+for test in test_cases:
+    a, b = test.strip().split(",")
+    print "1" if a.endswith(b) else "0"
+
+test_cases.close()
