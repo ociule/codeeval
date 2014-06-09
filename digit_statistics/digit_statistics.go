@@ -20,24 +20,24 @@ var cycle_len = [10]int{
 
 func digit_statistics(a, n int) [10]int {
 	var stats [10]int
-    cl := cycle_len[a%10]
+	cl := cycle_len[a%10]
 
-    //fmt.Println(cl, n/cl, n%cl)
-    // We could count the digit statistics by looping n times, but as they cycle every cl,
-    // this is the equivalent:
-    // Looping for a cycle (looping cl times)
-    // Multiplying the statistics by n/cl, then looping again for n%cl
+	//fmt.Println(cl, n/cl, n%cl)
+	// We could count the digit statistics by looping n times, but as they cycle every cl,
+	// this is the equivalent:
+	// Looping for a cycle (looping cl times)
+	// Multiplying the statistics by n/cl, then looping again for n%cl
 	for in := 1; in <= cl; in++ { // First let's run the stats for a cycle
 		ld := get_last_digit_of_pow(a, in)
-        //fmt.Println(a, in, ld)
+		//fmt.Println(a, in, ld)
 		stats[ld] += 1
 	}
-    for ix, st := range stats { // Multiply each count by n/cl
-        stats[ix] = st * (n/cl)
-    }
-	for in := 1; in <= n%cl; in++ { // Then loop again for n%cl 
+	for ix, st := range stats { // Multiply each count by n/cl
+		stats[ix] = st * (n / cl)
+	}
+	for in := 1; in <= n%cl; in++ { // Then loop again for n%cl
 		ld := get_last_digit_of_pow(a, in)
-        //fmt.Println(a, in, ld)
+		//fmt.Println(a, in, ld)
 		stats[ld] += 1
 	}
 	return stats

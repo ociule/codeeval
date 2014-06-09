@@ -31,46 +31,46 @@ func parseTest(test string) []Building {
 }
 
 func skylineMark(skyline []int, i int, h int) {
-        if skyline[i] >= h {
-            return
-        }
-        skyline[i] = h
+	if skyline[i] >= h {
+		return
+	}
+	skyline[i] = h
 }
 
 func getSkyline(buildings []Building) string {
-    // What is the start and length of this skyline ?
-    skylineLength := 0
-    skylineL := 100000
+	// What is the start and length of this skyline ?
+	skylineLength := 0
+	skylineL := 100000
 	for _, bld := range buildings {
-        if bld.L < skylineL {
-            skylineL = bld.L
-        }
-        if bld.R > skylineLength {
-            skylineLength = bld.R
-        }
-    }
-    // Our skyline is represented as a slice of integer new heights
-    // New heights mean the height 2 at x=1 means the skyline has height 2 starting at x=1
-    // Whether this is an closed or open interval is not clear but not necessary to give a solution
-    skyline := make([]int, skylineLength - skylineL + 1)
+		if bld.L < skylineL {
+			skylineL = bld.L
+		}
+		if bld.R > skylineLength {
+			skylineLength = bld.R
+		}
+	}
+	// Our skyline is represented as a slice of integer new heights
+	// New heights mean the height 2 at x=1 means the skyline has height 2 starting at x=1
+	// Whether this is an closed or open interval is not clear but not necessary to give a solution
+	skyline := make([]int, skylineLength-skylineL+1)
 	for _, bld := range buildings {
-        for i := bld.L; i <= bld.R - 1; i++ {
-            skylineMark(skyline, i - skylineL, bld.H)
-        }
-    }
+		for i := bld.L; i <= bld.R-1; i++ {
+			skylineMark(skyline, i-skylineL, bld.H)
+		}
+	}
 
-    oldValue := 0
-    output := make([]string, 0)
-    for ix, v := range skyline {
-        if v != oldValue {
-            output = append(output, fmt.Sprintf("%d %d", ix + skylineL, v))
-            oldValue = v
-        }
-    }
-    //fmt.Println(output)
-    // Now we output the skyline in the demanded format
-    // Just remove duplicates by ignoring non-changing heights
-    return strings.Join(output, " ")
+	oldValue := 0
+	output := make([]string, 0)
+	for ix, v := range skyline {
+		if v != oldValue {
+			output = append(output, fmt.Sprintf("%d %d", ix+skylineL, v))
+			oldValue = v
+		}
+	}
+	//fmt.Println(output)
+	// Now we output the skyline in the demanded format
+	// Just remove duplicates by ignoring non-changing heights
+	return strings.Join(output, " ")
 }
 
 func main() {
