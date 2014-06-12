@@ -37,7 +37,7 @@ func spiral(matrix [][]string, oy, ox, ey, ex int) []string {
 	}
 	if ey > 1 {
 		// Right side
-		for i := oy + 1; i < ey - 1; i++ {
+		for i := oy + 1; i < ey-1; i++ {
 			if DEBUG {
 				fmt.Println("right", matrix[i][ex-1])
 			}
@@ -101,13 +101,13 @@ func main() {
 	for scanner.Scan() {
 		lineSplit := strings.Split(scanner.Text(), ";")
 		n, err := strconv.Atoi(lineSplit[0])
-        if err != nil {
-            log.Fatal(err)
-        }
+		if err != nil {
+			log.Fatal(err)
+		}
 		m, err := strconv.Atoi(lineSplit[1])
-        if err != nil {
-            log.Fatal(err)
-        }
+		if err != nil {
+			log.Fatal(err)
+		}
 		matrix := parseMatrix(n, m, lineSplit[2])
 		out := spiral(matrix, 0, 0, n, m)
 		if len(out) != m*n {
