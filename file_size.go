@@ -10,6 +10,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer file.Close()
-    fi, _ := file.Stat()
-    fmt.Println(fi.Size())
+	fi, _ := file.Stat()
+	fmt.Println(fi.Size())
 }
