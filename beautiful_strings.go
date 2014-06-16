@@ -7,6 +7,8 @@ import "os"
 import "unicode"
 import "sort"
 
+// Start of Counter module - this should be in a different import but no easy way to import my own module in codeeval
+// This Counter is inspired by python's collections.Counter
 type Counter struct {
 	Data map[interface{}]int
 }
@@ -50,6 +52,7 @@ func (c *Counter) MostCommon(howMany int) []ItemWithCount {
 	sort.Sort(sort.Reverse(ByCount(out)))
 	return out[0:howMany]
 }
+// End of counter module
 
 func beautyScore(line string) int {
 	freqs := make(map[rune]int)
@@ -62,7 +65,7 @@ func beautyScore(line string) int {
 		}
 	}
 	mc := c.MostCommon(0)
-	score := 26
+	score := 26 // We know we must start at 26 and then go down
 	beauty := 0
 	for ix, item := range mc {
 		count := item.Count
