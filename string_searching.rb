@@ -27,9 +27,10 @@ end
 
 def asterisk_search suffix, substr
     first_asterisk_pos = substr.index(SEARCH_ASTERISK)
-    return false if substr[0, first_asterisk_pos - 1] != suffix[0, first_asterisk_pos - 1]
+    return false if substr[0, first_asterisk_pos] != suffix[0, first_asterisk_pos]
     next_suff = suffix[first_asterisk_pos - 1, suffix.length]
     next_substr = substr[first_asterisk_pos + 1, substr.length]
+    #puts next_suff, next_substr
     return search next_suff, next_substr 
 end
 
@@ -49,7 +50,7 @@ def search str, substr
     sa.each do |s|
         if s.length >= substr.length
             if has_asterisk substr
-                return asterisk_search s, substr
+                return true if asterisk_search s, substr
             else
                 return true if longest_common_prefix(s, substr) == substr
             end
