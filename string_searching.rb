@@ -27,10 +27,11 @@ end
 
 def asterisk_search suffix, substr
     first_asterisk_pos = substr.index(SEARCH_ASTERISK)
+    #puts ">>> %s %s" % [substr[0, first_asterisk_pos], suffix[0, first_asterisk_pos]]
     return false if substr[0, first_asterisk_pos] != suffix[0, first_asterisk_pos]
-    next_suff = suffix[first_asterisk_pos - 1, suffix.length]
+    next_suff = suffix[first_asterisk_pos, suffix.length]
     next_substr = substr[first_asterisk_pos + 1, substr.length]
-    #puts next_suff, next_substr
+    #puts "=== %s %s" % [next_suff, next_substr]
     return search next_suff, next_substr 
 end
 
@@ -40,6 +41,7 @@ def transform line
     substr.sub! "*", SEARCH_ASTERISK
     # And baaack
     substr.sub! "+", "*"
+    #p str, substr
 
     return search str, substr
 end
