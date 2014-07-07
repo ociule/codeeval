@@ -37,10 +37,10 @@ end
 
 def transform line
     str, substr = line.split ","
-    substr.sub! "\\*", "+"
-    substr.sub! "*", SEARCH_ASTERISK
+    substr.gsub! "\\*", "+"
+    substr.gsub! "*", SEARCH_ASTERISK
     # And baaack
-    substr.sub! "+", "*"
+    substr.gsub! "+", "*"
     #p str, substr
 
     return search str, substr
