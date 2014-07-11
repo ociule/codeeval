@@ -52,6 +52,7 @@ func (c *Counter) MostCommon(howMany int) []ItemWithCount {
 	sort.Sort(sort.Reverse(ByCount(out)))
 	return out[0:howMany]
 }
+
 // End of counter module
 
 func beautyScore(line string) int {
