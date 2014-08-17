@@ -7,24 +7,24 @@ import "os"
 import "strings"
 
 func parseTest(in string) (str string, chars map[rune]struct{}) {
-    inSplit := strings.Split(in, ", ")
-    str = inSplit[0]
-    chars = make(map[rune]struct{}, len(inSplit[1]))
-    for _, char := range inSplit[1] {
-        chars[char] = struct{}{}
-    }
+	inSplit := strings.Split(in, ", ")
+	str = inSplit[0]
+	chars = make(map[rune]struct{}, len(inSplit[1]))
+	for _, char := range inSplit[1] {
+		chars[char] = struct{}{}
+	}
 	return
 }
 
 func remove(str string, chars map[rune]struct{}) string {
-    //fmt.Println(str, chars)
-    outSlice := make([]string, 0, len(str))
-    for _, char := range str {
-        _, present := chars[char]
-        if !present {
-            outSlice = append(outSlice, string(char))
-        }
-    }
+	//fmt.Println(str, chars)
+	outSlice := make([]string, 0, len(str))
+	for _, char := range str {
+		_, present := chars[char]
+		if !present {
+			outSlice = append(outSlice, string(char))
+		}
+	}
 	return strings.Join(outSlice, "")
 }
 
