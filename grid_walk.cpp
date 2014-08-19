@@ -1,6 +1,4 @@
 /**
-    This is NOT a correct solution! The output from countClimbingStairs overflows if the input n is large enough.
-    To solve this, we would need a bigint library. Otherwise, the solution is a correct memoized fibonacci, FWIW.
 */
 
 #include <map>
