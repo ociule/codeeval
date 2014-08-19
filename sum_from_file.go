@@ -14,12 +14,12 @@ func main() {
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 
-    var sum uint = 0
+	var sum uint = 0
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-        var n uint
-        fmt.Sscanf(line, "%d", &n)
-        sum += n
+		var n uint
+		fmt.Sscanf(line, "%d", &n)
+		sum += n
 	}
-    fmt.Println(sum)
+	fmt.Println(sum)
 }
