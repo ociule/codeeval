@@ -52,7 +52,7 @@ func (s *signal) removeLinearBias() {
 }
 
 func (s *signal) dump(fileName string) {
-    // Dumps the signal in a format useful for viewing with gnuplot, just: open "out.txt"
+	// Dumps the signal in a format useful for viewing with gnuplot, just: open "out.txt"
 	fo, err := os.Create(fileName)
 	if err != nil {
 		panic(err)
