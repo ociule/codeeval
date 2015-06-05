@@ -1,0 +1,136 @@
+"""
+Recursive, backtracking and pruning maze solver
+
+Started from http://stackoverflow.com/a/22702286
+Added current solution length tracking
+Added best solution tracking
+Added stop if next solution to be explored is longer than current_best (tree pruning)
+Added CodeEval I/O compat
+"""
+
+from collections import namedtuple
+import sys
+from copy import deepcopy
+
+Dir = namedtuple("Dir", ["char", "dy", "dx"])
+
+
+CODEEVAL_MODE = True
+DEBUG = False 
+
+class Maze:
+    START = "S"
+    END   = "E"
+    WALL  = "*"
+    PATH  = " "
+    TESTED_SOL  = "'"
+    OPEN  = {PATH, END, TESTED_SOL}  # map locations you can move to (not WALL or already explored)
+
+    RIGHT = Dir(">",  0,  1)
+    DOWN  = Dir("v",  1,  0)
+    LEFT  = Dir("<",  0, -1)
+    UP    = Dir("^", -1,  0)
+    DIRS  = [UP, RIGHT, DOWN, LEFT]
+    CODEEVAL_PATH_MARKER = "+"
+
+    @classmethod
+    def load_maze(cls, fname):
+        with open(fname) as inf:
+            lines = (line.rstrip("\r\n") for line in inf)
+            maze  = [list(line) for line in lines]
+        return cls(maze)
+
+    def __init__(self, maze):
+        self.maze = maze
+        self.current_best = 1000000
+        self.sols = {}
+
+    def __str__(self):
+        return self.print_sol(self.maze) 
+
+    def print_sol(self, sol):
+        raw = "\n".join(''.join(line) for line in sol)
+        if CODEEVAL_MODE:
+            raw = raw.replace(Maze.TESTED_SOL, Maze.PATH)
+            raw = raw.replace(Maze.RIGHT.char, Maze.CODEEVAL_PATH_MARKER)
+            raw = raw.replace(Maze.LEFT.char, Maze.CODEEVAL_PATH_MARKER)
+            raw = raw.replace(Maze.UP.char, Maze.CODEEVAL_PATH_MARKER)
+            raw = raw.replace(Maze.DOWN.char, Maze.CODEEVAL_PATH_MARKER)
+            raw = raw.replace(Maze.END, Maze.CODEEVAL_PATH_MARKER)
+        return raw
+        
+
+    def find_start(self):
+        if CODEEVAL_MODE:
+            try:
+                return 0, self.maze[0].index(" ")
+            except ValueError:
+                raise ValueError("Start location not found")
+                
+        for y,line in enumerate(self.maze):
+            try:
+                x = line.index("S")
+                return y, x
+            except ValueError:
+                pass
+
+        # not found!
+        raise ValueError("Start location not found")
+
+    def mark_end(self):
+        """ Codeeval mazes lack the "E" end marker """
+        ex = self.maze[-1].index(" ")
+        self.maze[-1][ex] = Maze.END
+
+    def solve(self, y, x, current_sol_length):
+        if self.maze[y][x] == Maze.END:
+            # base case - endpoint has been found
+            if DEBUG:
+                print("Found sol with len %d" % current_sol_length)
+                print(self)
+            self.current_best = current_sol_length
+            self.sols[current_sol_length] = deepcopy(self.maze)
+        else:
+            # search recursively in each direction from here
+            # For codeeval mazes, do not try to go up from the start
+            allowed_dirs = Maze.DIRS[1:] if (CODEEVAL_MODE and y == 0) else Maze.DIRS
+            for dir in allowed_dirs:
+                ny, nx = y + dir.dy, x + dir.dx
+                if self.maze[ny][nx] in Maze.OPEN:  # can I go this way?
+                    #print("Trying %s" % dir.char)  # 1 Uncomment 1, 2, 3 for step by step printing
+                    if self.maze[y][x] != Maze.START: # don't overwrite Maze.START
+                        self.maze[y][x] = dir.char  # mark direction chosen
+                    #print(self)  # 2
+                    #raw_input()  # 3
+                    if current_sol_length+1 <= self.current_best:
+                        self.solve(ny, nx, current_sol_length+1)  # recurse...
+
+            # no solution found from this location
+            if self.maze[y][x] != Maze.START:       # don't overwrite Maze.START
+                self.maze[y][x] = Maze.TESTED_SOL# clear failed search from map
+            return False
+
+def main():
+    maze = Maze.load_maze(sys.argv[1])
+
+    try:
+        if DEBUG:
+            print("Maze loaded:")
+            print(maze)
+        if CODEEVAL_MODE:
+            maze.mark_end()
+
+        sy, sx = maze.find_start()
+        maze.solve(sy, sx, 0)
+        if len(maze.sols.keys()) > 0:
+            if not CODEEVAL_MODE:
+                print("Best solution has length %d" % maze.current_best)
+            else:
+                print(maze.print_sol(maze.sols[maze.current_best]))
+        else:
+            print("          No solution found")
+    except ValueError:
+        print("No start point found.")
+
+if __name__=="__main__":
+    main()
