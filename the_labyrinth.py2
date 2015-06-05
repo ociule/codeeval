@@ -4,7 +4,7 @@ Recursive, backtracking and pruning maze solver
 Started from http://stackoverflow.com/a/22702286
 Added current solution length tracking
 Added best solution tracking
-Added stop if next solution to be explored is longer than current_best (tree pruning)
+Added stop if next solution to be explored is longer than current_best (tree pruning), inspired by http://thetokenizer.com/2013/01/13/practicing-backtracking/ (section "Find the best")
 Added CodeEval I/O compat
 """
 
