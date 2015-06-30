@@ -1,0 +1,179 @@
+"""
+Recursive, backtracking and pruning shortest path graph search 
+
+"""
+from __future__ import print_function
+import sys
+from copy import deepcopy
+
+
+DEBUG = False 
+COST_STOP = 7
+COST_TRANSFER = 12
+
+class BusNetwork:
+    @classmethod
+    def load(cls, line):
+        splitLine = line.split(";")
+        startEndRaw = splitLine[0].strip("()").split(',')
+        start = int(startEndRaw[0])
+        end = int(startEndRaw[1])
+        
+        linesRaw = splitLine[1:]
+
+        lines = []
+        for line in linesRaw:
+            line = line.strip()
+            stopsStart = line.index('=[') + 2
+            stops = line[stopsStart:-1]
+            stops = [int(s) for s in stops.split(',')]
+            lines.append(stops)
+
+        return cls(start, end, lines)
+
+    def __init__(self, start, end, lines):
+        self.start = start
+        self.end = end
+        self.lines = lines
+        self.current_best = 1000000
+        self.sols = {}
+        self.graph = None  # lines as graph
+
+
+    def __str__(self):
+        return self.print_net()
+
+    def print_net(self):
+        raw = "Start: %i End: %i "% (self.start, self.end) + str(self.lines)
+        return raw
+        
+
+    def enum_possibilities(self, id_stop, id_line):
+        p = []
+
+        # Look at all the lines where the stop is present
+        for cid_line, stops in enumerate(self.lines):
+            if id_stop in stops:
+                    # If end of line
+                    if self.stop_is_end_of_line(id_stop, cid_line):
+                        id_next_stop = self.get_neighbouring_stops(id_stop, cid_line)[0]
+                        if id_line is None:
+                            p.append((id_next_stop, COST_STOP, cid_line, cid_line))
+                        else:
+                            if id_line == cid_line:
+                                p.append((id_next_stop, COST_STOP, cid_line, id_line))
+                            else:  # Transfer
+                                p.append((id_next_stop, COST_TRANSFER + COST_STOP, cid_line, id_line))
+                    else:
+                        next_stops = self.get_neighbouring_stops(id_stop, cid_line)
+                        if id_line is None:
+                            for id_next_stop in next_stops:
+                                p.append((id_next_stop, COST_STOP, cid_line, cid_line))
+                        else:
+                            if id_line == cid_line:
+                                for id_next_stop in next_stops:
+                                    p.append((id_next_stop, COST_STOP, cid_line, id_line))
+                            else:  # Transfer
+                                for id_next_stop in next_stops:
+                                    p.append((id_next_stop, COST_TRANSFER + COST_STOP, cid_line, id_line))
+        return p
+
+    def get_neighbouring_stops(self, id_stop, id_line):
+        stops = []
+        
+        line = self.lines[id_line]
+        ix_stop = line.index(id_stop)
+        if self.stop_is_end_of_line(id_stop, id_line):
+            if ix_stop == 0:
+                return [line[ix_stop + 1]]
+            else:
+                return [line[ix_stop - 1]]
+        else:
+            return [line[ix_stop - 1], line[ix_stop + 1]]
+
+
+
+    def stop_is_end_of_line(self, id_stop, id_line):
+        ends = [self.lines[id_line][0], self.lines[id_line][-1]]
+        return id_stop in ends
+
+    def solve_naive(self, current_stop, current_line, current_sol_length, current_solution_stops):
+        if current_stop == self.end:
+            # base case - endpoint has been found
+            if DEBUG:
+                print("Found sol with len %d" % current_sol_length)
+                print(self)
+            self.current_best = current_sol_length
+            self.sols[current_sol_length] = current_solution_stops
+        else:
+            # search recursively in each direction from here
+            allowed_dirs = self.enum_possibilities(current_stop, current_line)
+
+            if DEBUG:
+                print(allowed_dirs)
+            for dir in allowed_dirs:
+                id_next_stop, cost_increment, id_next_line, id_old_line = dir
+                if current_sol_length + cost_increment <= self.current_best:
+                    if (id_next_stop, id_next_line) in current_solution_stops:
+                        # Already visited, continue
+                        continue
+                    if DEBUG:
+                        print("At", current_stop, current_line, "going to", id_next_stop, id_next_line, current_solution_stops)
+                        #raw_input()
+                    if len(current_solution_stops) == 0:
+                        if DEBUG:
+                            print(">>>>> We should")
+                        current_solution_stops = [(current_stop, id_old_line)]
+                    self.solve_naive(id_next_stop, id_next_line, current_sol_length + cost_increment, current_solution_stops + [(id_next_stop, id_next_line)])  # recurse...
+                else:
+                    if DEBUG:
+                        print("Not exploring", id_next_stop, id_next_line, "too costly", current_sol_length + cost_increment)
+
+
+    def solve_dijkstra(self):
+        #if self.graph is None:
+        #    self.parse_lines_to_graph()
+
+        solved = {}
+
+        for id_line, stops in enumerate(self.lines):
+            if self.start in stops:
+                solved[(self.start, id_line)] = 0
+
+        candidate_edges = {}
+        for s in solved:
+            id_stop, id_line = s
+            p = self.enum_possibilities(id_stop, id_line)
+            print(s, p)
+            for edge in p:
+                id_next_node, cost, id_next_line = edge
+                if id_next_node == self.end:
+                    if DEBUG:
+                        print("Found sol with len %d" % 0)
+                    pass
+                if not (id_next_node, id_next_line) in solved:
+                    candidate_edges 
+            
+
+
+
+def main():
+    test_cases = open(sys.argv[1], 'r')
+
+    for test in test_cases:
+        test = test.strip()
+        net = BusNetwork.load(test)
+
+        if DEBUG:
+            print("Loaded:")
+            print(net)
+
+        net.solve_naive(net.start, None, 0, [])
+        #net.solve_dijkstra()
+        if len(net.sols.keys()) > 0:
+                print(min(net.sols.keys()))
+        else:
+            print("None")
+
+if __name__=="__main__":
+    main()
