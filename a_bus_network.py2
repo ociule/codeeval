@@ -4,14 +4,53 @@ Recursive, backtracking and pruning shortest path graph search
 """
 from __future__ import print_function
 import sys
-from copy import deepcopy
 
 
-DEBUG = False 
+DEBUG = 1 
+DEBUG = False
 COST_STOP = 7
 COST_TRANSFER = 12
+HUGE = 1000000000000000
+from collections import defaultdict
+import itertools
+import heapq
 
-class BusNetwork:
+
+class PriorityQueue(object):
+    """
+    https://docs.python.org/2/library/heapq.html#priority-queue-implementation-notes
+    """
+
+    REMOVED = '<removed-task>'      # placeholder for a removed task
+    def __init__(self):
+        self.pq = []                         # list of entries arranged in a heap
+        self.entry_finder = {}               # mapping of tasks to entries
+        self.counter = itertools.count()     # unique sequence count
+
+    def add_task(self, task, priority=0):
+        'Add a new task or update the priority of an existing task'
+        if task in self.entry_finder:
+            self.remove_task(task)
+        count = next(self.counter)
+        entry = [priority, count, task]
+        self.entry_finder[task] = entry
+        heapq.heappush(self.pq, entry)
+
+    def remove_task(self, task):
+        'Mark an existing task as REMOVED.  Raise KeyError if not found.'
+        entry = self.entry_finder.pop(task)
+        entry[-1] = PriorityQueue.REMOVED
+
+    def pop_task(self):
+        'Remove and return the lowest priority task. Raise KeyError if empty.'
+        while self.pq:
+            priority, count, task = heapq.heappop(self.pq)
+            if task is not PriorityQueue.REMOVED:
+                del self.entry_finder[task]
+                return task
+        raise KeyError('pop from an empty priority queue')
+
+class BusNetwork(object):
     @classmethod
     def load(cls, line):
         splitLine = line.split(";")
@@ -35,9 +74,13 @@ class BusNetwork:
         self.start = start
         self.end = end
         self.lines = lines
-        self.current_best = 1000000
+        self.current_best = HUGE
         self.sols = {}
-        self.graph = None  # lines as graph
+        self.cache = {'ENUM_POSSIBILITIES': {},
+                      'GET_NEIGHBOURING_STOPS': {},
+                      'ENUM_POSS_VIA_GRAPH': {}}
+        self.graph = None
+        self.pq = PriorityQueue()
 
 
     def __str__(self):
@@ -49,8 +92,13 @@ class BusNetwork:
         
 
     def enum_possibilities(self, id_stop, id_line):
-        p = []
+        CACHE_ID = 'ENUM_POSSIBILITIES'
 
+        cached = self.cache[CACHE_ID].get((id_stop, id_line))
+        if cached is not None:
+            return cached
+
+        p = []
         # Look at all the lines where the stop is present
         for cid_line, stops in enumerate(self.lines):
             if id_stop in stops:
@@ -76,28 +124,36 @@ class BusNetwork:
                             else:  # Transfer
                                 for id_next_stop in next_stops:
                                     p.append((id_next_stop, COST_TRANSFER + COST_STOP, cid_line, id_line))
+        self.cache[CACHE_ID][(id_stop, id_line)] = p
         return p
 
     def get_neighbouring_stops(self, id_stop, id_line):
+        CACHE_ID = 'GET_NEIGHBOURING_STOPS'
+
+
+        cached = self.cache[CACHE_ID].get((id_stop, id_line))
+        if cached is not None:
+            return cached
         stops = []
         
         line = self.lines[id_line]
         ix_stop = line.index(id_stop)
         if self.stop_is_end_of_line(id_stop, id_line):
             if ix_stop == 0:
-                return [line[ix_stop + 1]]
+                out = [line[ix_stop + 1]]
             else:
-                return [line[ix_stop - 1]]
+                out = [line[ix_stop - 1]]
         else:
-            return [line[ix_stop - 1], line[ix_stop + 1]]
-
-
+            out = [line[ix_stop - 1], line[ix_stop + 1]]
+        self.cache[CACHE_ID][(id_stop, id_line)] = out
+        return out
 
     def stop_is_end_of_line(self, id_stop, id_line):
-        ends = [self.lines[id_line][0], self.lines[id_line][-1]]
-        return id_stop in ends
+        return id_stop == self.lines[id_line][0] or id_stop == self.lines[id_line][-1]
 
     def solve_naive(self, current_stop, current_line, current_sol_length, current_solution_stops):
+        # Backtracking, exponential
+        # Times out on the CodeEval hard input
         if current_stop == self.end:
             # base case - endpoint has been found
             if DEBUG:
@@ -130,30 +186,92 @@ class BusNetwork:
                         print("Not exploring", id_next_stop, id_next_line, "too costly", current_sol_length + cost_increment)
 
 
-    def solve_dijkstra(self):
-        #if self.graph is None:
-        #    self.parse_lines_to_graph()
-
-        solved = {}
-
+    def parse_lines_to_graph(self):
+        self.graph = {}
         for id_line, stops in enumerate(self.lines):
-            if self.start in stops:
-                solved[(self.start, id_line)] = 0
+            for id_stop in stops:
+                neighbours = self.get_neighbouring_stops(id_stop, id_line)
+                existing = self.graph.get(id_stop)
+                if existing:
+                    # Same stop exists on another line, transfer
+                    self.graph[id_stop][id_line] = [(id_n, id_line, COST_STOP) for id_n in neighbours]
+                    #if DEBUG:
+                    #    print("Adding to", id_stop, neighbours, existing)
+                    for existing_line in existing:
+                        self.graph[id_stop][existing_line] += [(id_stop, id_line, COST_TRANSFER)]
+                        self.graph[id_stop][id_line] += [(id_stop, existing_line, COST_TRANSFER)]
+                else:
+                    self.graph[id_stop] = {}
+                    self.graph[id_stop][id_line] = [(id_n, id_line, COST_STOP) for id_n in neighbours]
 
-        candidate_edges = {}
-        for s in solved:
-            id_stop, id_line = s
-            p = self.enum_possibilities(id_stop, id_line)
-            print(s, p)
-            for edge in p:
-                id_next_node, cost, id_next_line = edge
-                if id_next_node == self.end:
+    def solve_dijkstra(self):
+        if self.graph is None:
+            self.parse_lines_to_graph()
+
+        dist = defaultdict(lambda: HUGE)
+        unvisited = self.pq
+
+        starting_lines = self.graph[self.start].keys()
+        start_node = (self.start, starting_lines[0])
+
+        for sl in starting_lines:
+            dist[(self.start, sl)] = 0
+
+
+        for id_stop in self.graph.iterkeys():
+            for id_line in self.graph[id_stop].iterkeys():
+                unvisited.add_task((id_stop, id_line), priority=dist[(id_stop, id_line)])
+
+        current_node = None 
+        while len(unvisited.entry_finder) > 0:
+            if current_node is None:
+                current_node = start_node
+
+            id_node, id_line = current_node
+            current_node_distance = dist[current_node]
+
+            # Step 3
+            edges = self.graph[id_node][id_line]
+
+            if DEBUG:
+                print("Considering", current_node, current_node_distance, edges)
+
+            for edge in edges:
+                id_next_stop, id_next_line, cost = edge
+
+                # Check that the vertex is unvisited
+                if not (id_next_stop, id_next_line) in unvisited.entry_finder:
+                    continue
+                tentative_cost = current_node_distance + cost
+                old_dist = dist[(id_next_stop, id_next_line)] 
+                if tentative_cost < old_dist:
                     if DEBUG:
-                        print("Found sol with len %d" % 0)
-                    pass
-                if not (id_next_node, id_next_line) in solved:
-                    candidate_edges 
-            
+                        print('Updating', id_next_stop, id_next_line, old_dist, tentative_cost)
+                    dist[(id_next_stop, id_next_line)] = tentative_cost
+                    unvisited.add_task((id_next_stop, id_next_line), priority=tentative_cost)
+                    # Step 5
+                    if id_next_stop == self.end:
+                        if DEBUG:
+                            print('Visited end', tentative_cost)
+                        self.sols[tentative_cost] = []
+                        return
+
+            # Step 4
+            # Step 6
+            current_node = unvisited.pop_task()
+            if current_node is None:
+                break
+    
+    @classmethod
+    def find_min_dist_univisited(cls, unvisited_list, dist_dict):
+        current_min_dist = HUGE
+        current_min_dist_node = None
+        for node in unvisited_list:
+            if dist_dict[node] < current_min_dist:
+                current_min_dist = dist_dict[node]
+                current_min_dist_node = node
+        return current_min_dist_node
+
 
 
 
@@ -168,12 +286,16 @@ def main():
             print("Loaded:")
             print(net)
 
-        net.solve_naive(net.start, None, 0, [])
-        #net.solve_dijkstra()
+        #net.solve_naive(net.start, None, 0, [])
+        net.solve_dijkstra()
         if len(net.sols.keys()) > 0:
                 print(min(net.sols.keys()))
         else:
             print("None")
 
 if __name__=="__main__":
-    main()
+    if len(sys.argv) == 3 and sys.argv[2] == 'profile':
+        import cProfile as profile
+        profile.run("main();")
+    else:
+        main()
