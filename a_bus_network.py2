@@ -1,6 +1,12 @@
 """
-Recursive, backtracking and pruning shortest path graph search 
+Dijkstra's algo with priority queue.
 
+With the large input (a_bus_network.txt.4), I get the following runtimes:
+~30 seconds with the solve_naive implementation
+~3s with dijkstra, without priority queue (overwritten, no longer available)
+~0.3s with priority queue
+
+Striking difference
 """
 from __future__ import print_function
 import sys
