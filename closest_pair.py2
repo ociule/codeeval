@@ -1,0 +1,105 @@
+from __future__ import print_function
+import sys, doctest
+from operator import itemgetter
+from math import sqrt
+
+
+def euclidian(p1, p2):
+    return sqrt(float(abs(p1[0] - p2[0])) ** 2 + abs(p1[1] - p2[1]) ** 2)
+
+
+def computedLRmin(left, right, dist):
+    """
+    See https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
+    This computes step 4 from above
+    For each point p from left, we only need to consider the points from right 
+        that are closer than dist on the x and y axis.
+    """
+    #print("computedLRmin", left, right, dist)
+    current_min = dist
+    for p1 in left:
+        for p2 in right:
+            if abs(p1[0] - p2[0]) < dist and abs(p1[1] - p2[1]) < dist:
+                d = euclidian(p1, p2)
+                if d < current_min:
+                    current_min = d
+    return current_min
+
+def closest(points):
+    """
+    Points must be ordered
+    
+    >>> closest([(0, 0), (1, 0)])
+    1.0
+    >>> closest([(1, 0), (0, 0)])
+    1.0
+    >>> closest([(1, 0), (1, 0)])
+    0.0
+    >>> closest([(2, 0), (1, 0)])
+    1.0
+    >>> closest([(1, 0), (2, 0), (3, 0)])
+    1.0
+    >>> closest([(1, 0), (2, 0), (6, 0), (8, 0)])
+    1.0
+    >>> closest([(1, 0), (2, 0), (6, 10), (8, 10)])
+    1.0
+    >>> closest([(0, 0), (2, 0), (6, 10), (8, 10), (11, 10)])
+    2.0
+    """
+    len_points = len(points)
+
+    if len_points >= 4:
+        ix_mid = len_points / 2
+
+        dLmin = closest(points[:ix_mid])
+        dRmin = closest(points[ix_mid:])
+
+        dist = min(dLmin, dRmin)
+
+        dLRmin = computedLRmin(points[:ix_mid], points[ix_mid:], dist)
+
+        return min(dLRmin, dLmin, dRmin)
+    else:  # 3 or less
+        if len_points == 2:
+            d = euclidian(points[0], points[1])
+            #print("min {} : {}".format(points, d))
+            return d 
+        else:
+            d01 = euclidian(points[0], points[1])
+            d12 = euclidian(points[1], points[2])
+            d20 = euclidian(points[2], points[0])
+            d = min(d01, d12, d20)
+            #print("min {} : {}".format(points, d))
+            return d 
+
+
+def solve(points):
+    ordered_by_x = sorted(points, key=itemgetter(0)) 
+
+
+    return closest(ordered_by_x)
+
+def main():
+    test_cases = open(sys.argv[1], 'r')
+
+    len_remaining = 0
+    current_test_case = None
+    for test in test_cases:
+        if len_remaining == 0:
+            len_remaining = int(test.strip())
+            if len_remaining == 0:  # Empty test case
+                return
+            current_test_case = []
+        else:
+            xy = [int(i) for i in test.strip().split()]
+            current_test_case.append((xy[0], xy[1]))
+            len_remaining -= 1
+            if len_remaining == 0:  # Empty test case
+                print("%.4f" % solve(current_test_case))
+
+    test_cases.close()
+
+if len(sys.argv) == 1:
+    doctest.testmod()
+else:
+    main()
